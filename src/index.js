@@ -146,6 +146,8 @@ class Service {
                   skip: filters.$skip || 0,
                   //descending: filters.$sort === 'desc'
                 };
+                if(query.startkey) opts.startkey = query.startkey
+                if(query.endkey) opts.endkey = query.endkey
 
                 let promisify = (err, res) => {
                   if (err) {
