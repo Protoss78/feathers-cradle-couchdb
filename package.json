@@ -46,8 +46,7 @@
     "watch": "babel --watch -d lib/ src/",
     "jshint": "jshint src/. test/. --config",
     "mocha": "mocha test/ --compilers js:babel-core/register",
-    "test": "rm -rf .tmp && npm run compile && npm run jshint && npm run mocha",
-    "start": "node example/app"
+    "test": "rm -rf .tmp && npm run compile && npm run jshint && npm run mocha"
   },
   "engines": {
     "node": ">4.4.0",
