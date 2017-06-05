@@ -160,7 +160,7 @@ class Service {
                   }
 
                   for (let i=0,N=res.length; i<N; i++) {
-                    var isInclude = Object.keys(res[i].value).length === 1
+                    var isInclude = typeof res[i].value === 'object' && Object.keys(res[i].value).length === 1
                     var key = res[i].key
 
                     res[i] = isInclude ?  res[i].doc : res[i].value ;
