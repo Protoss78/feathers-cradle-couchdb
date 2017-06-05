@@ -146,8 +146,12 @@ class Service {
                   skip: filters.$skip || 0,
                   //descending: filters.$sort === 'desc'
                 };
-                if(query.startkey) opts.startkey = query.startkey
-                if(query.endkey) opts.endkey = query.endkey
+
+                if (query.startkey) opts.startkey = query.startkey;
+                if (query.endkey) opts.endkey = query.endkey;
+                if (query.key) opts.key = query.key;
+                if (query.include_docs === true) opts.include_docs = true;
+
 
                 let promisify = (err, res) => {
                   if (err) {
@@ -155,10 +159,14 @@ class Service {
                   }
 
                   for (let i=0,N=res.length; i<N; i++) {
-                      res[i] = res[i].value;
-                      res[i].id = res[i]._id;
-                      delete res[i]._id;
-                      delete res[i]._rev;
+                    var isInclude = Object.keys(res[i].value).length === 1
+                    var key = res[i].key
+
+                    res[i] = isInclude ?  res[i].doc : res[i].value ;
+                    res[i].id = res[i]._id;
+                    if(isInclude) res[i].key = key[0];
+                    delete res[i]._id;
+                    delete res[i]._rev;
 
                       const arr = filters.$select;
                       if (arr && Array.isArray(arr) && arr.length>0) {
