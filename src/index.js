@@ -150,6 +150,7 @@ class Service {
                 if (query.startkey) opts.startkey = query.startkey;
                 if (query.endkey) opts.endkey = query.endkey;
                 if (query.key) opts.key = query.key;
+                if (query.keys) opts.keys = query.keys;
                 if (query.include_docs === true) opts.include_docs = true;
 
 
