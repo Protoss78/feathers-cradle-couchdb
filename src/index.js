@@ -161,13 +161,12 @@ class Service {
 
                   for (let i=0,N=res.length; i<N; i++) {
 
-                    var key = res[i].key;
-{                   res[i] = res[i].doc ? res[i].doc : res[i].value;
-                    res[i].id = res[i]._id;
-                    if (key) res[i].key = key
-                    delete res[i]._id;
-                    delete res[i]._rev;}
-
+                        var key = res[i].key;
+                        res[i] = res[i].doc ? res[i].doc : res[i].value;
+                        res[i].id = res[i]._id;
+                        if (key) res[i].key = key
+                        delete res[i]._id;
+                        delete res[i]._rev;
 
                       const arr = filters.$select;
                       if (arr && Array.isArray(arr) && arr.length>0) {
