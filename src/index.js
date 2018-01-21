@@ -175,12 +175,7 @@ class Service {
             if (res[i]._id) res[i].id = res[i]._id;
             if (res[i].key) {
               res[i].viewData = JSON.parse(JSON.stringify(res[i]))
-              delete res[i].key
-              delete res[i].value
-              delete res[i].doc
             }
-            delete res[i]._id;
-            delete res[i]._rev;
 
             const arr = filters.$select;
             if (arr && Array.isArray(arr) && arr.length > 0) {
@@ -246,11 +241,8 @@ class Service {
   get(id, params) {
     return this._get(id, params)
       .then(res => {
-        let obj = Object.assign({id: res._id}, res);
-        delete obj._id;
-        delete obj._rev;
-
-        return obj;
+        // TODO: Implement id field handling here?
+        return res;
       })
       .catch(errorHandler);
   }
@@ -304,13 +296,6 @@ class Service {
 
     return this.db.then(db => {
       return new Promise((resolve, reject) => {
-        if (data.id) {
-          delete data.id;
-        }
-        if (data._id) {
-          delete data._id;
-        }
-
         let entry = Object.assign({}, data);
 
         db.merge(id, entry, err => {
