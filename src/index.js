@@ -172,7 +172,6 @@ class Service {
 
           for (let i = 0, N = res.length; i < N; i++) {
 
-            if (res[i]._id) res[i].id = res[i]._id;
             if (res[i].key) {
               res[i].viewData = JSON.parse(JSON.stringify(res[i]))
             }
@@ -262,10 +261,6 @@ class Service {
 
     // single doc insert
     else {
-      if (data._id || data.id) {
-        _id = data._id || data.id;
-        data.id = data._id = undefined;
-      }
       entry = Object.assign({}, data);
 
       if (_id && _id.startsWith('_design/')) {
