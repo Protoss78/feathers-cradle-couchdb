@@ -16,6 +16,7 @@ class Service {
       throw new Error('You must provide a Model name');
     }
 
+    // TODO: Make use of this field in service methods
     this.id = options.id || '_id';
     this.events = options.events || [];
     this.connection = options.connection;
@@ -28,26 +29,26 @@ class Service {
   database() {
     let db = this.connection.database(this.Model);
 
-    return new Promise((resolve,reject) => {
+    return new Promise((resolve, reject) => {
       db.exists(function (err, exists) {
         if (err) {
-            return reject(err);
+          return reject(err);
         }
 
         if (exists) {
-            resolve(db);
+          resolve(db);
         } else {
-            db.create((err) => {
-                if (err) {
-                    if (err.name === 'CouchError' && err.error === 'file_exists') {
-                        return resolve(db);
-                    }
+          db.create((err) => {
+            if (err) {
+              if (err.name === 'CouchError' && err.error === 'file_exists') {
+                return resolve(db);
+              }
 
-                    return reject(err);
-                }
+              return reject(err);
+            }
 
-                resolve(db);
-            });
+            resolve(db);
+          });
         }
       });
     });
@@ -58,77 +59,77 @@ class Service {
   }
 
   _createMapRCondition(id, key, query) {
-      const self = this,
-            METHOD = ['$in','$nin','$ne','$not','$lt','$lte','$gt','$gte'],
-            COMPAT = ['.indexOf','.indexOf', '!==', '!==', '<', '<=', '>', '>='];
+    const self = this,
+      METHOD = ['$in', '$nin', '$ne', '$not', '$lt', '$lte', '$gt', '$gte'],
+      COMPAT = ['.indexOf', '.indexOf', '!==', '!==', '<', '<=', '>', '>='];
 
-      if (id===key && id === '$or') {
-        let retval = '';
+    if (id === key && id === '$or') {
+      let retval = '';
 
-        for (let i=0,N=query.length; i<N; i++) {
-          (function(obj){
-            for (let k in obj) {
-              retval += ' || ' + self._createMapRCondition(k, k, obj[k]);
-            }
-          }(query[i]));
-        }
-
-        return '(' + retval.substr(4) + ')';
-
-      } else if (id===key && typeof query !== 'object') {
-          return `doc.${id}==${JSON.stringify(query)}`;
-      } else {
-          let arr = '';
-          for (var k in query) {
-              let repl = COMPAT[METHOD.indexOf(k)];
-              let qb = `doc.${id}${repl}${query[k]}`;
-              if (k === '$in') {
-                  qb = `RegExp('${query[k].join('|')}','gi').test(doc.${id})`;
-              } else if (k === '$nin') {
-                  qb = `!RegExp('${query[k].join('|')}','gi').test(doc.${id})`;
-              }
-              arr += ' && ' + qb;
+      for (let i = 0, N = query.length; i < N; i++) {
+        (function (obj) {
+          for (let k in obj) {
+            retval += ' || ' + self._createMapRCondition(k, k, obj[k]);
           }
-
-          return arr.substr(4);
+        }(query[i]));
       }
+
+      return '(' + retval.substr(4) + ')';
+
+    } else if (id === key && typeof query !== 'object') {
+      return `doc.${id}==${JSON.stringify(query)}`;
+    } else {
+      let arr = '';
+      for (var k in query) {
+        let repl = COMPAT[METHOD.indexOf(k)];
+        let qb = `doc.${id}${repl}${query[k]}`;
+        if (k === '$in') {
+          qb = `RegExp('${query[k].join('|')}','gi').test(doc.${id})`;
+        } else if (k === '$nin') {
+          qb = `!RegExp('${query[k].join('|')}','gi').test(doc.${id})`;
+        }
+        arr += ' && ' + qb;
+      }
+
+      return arr.substr(4);
+    }
   }
 
   // avoid using temporaryView CouchDB, use predefined view!
   _createTempView(filters, query) {
-      const self = this;
-      //
-      let fields = 'doc';
-      if (filters.$select) {
-          let obj = '_id: doc._id';
-              obj += ', _rev: doc._rev';
-          for (let i = 0, N = filters.$select.length; i<N; i++) {
-              obj += `, ${filters.$select[i]}: doc.${filters.$select[i]}`;
-          }
-          fields = '{'+obj+'}';
+    const self = this;
+    //
+    let fields = 'doc';
+    if (filters.$select) {
+      let obj = '_id: doc._id';
+      obj += ', _rev: doc._rev';
+      for (let i = 0, N = filters.$select.length; i < N; i++) {
+        obj += `, ${filters.$select[i]}: doc.${filters.$select[i]}`;
       }
+      fields = '{' + obj + '}';
+    }
 
-      let conditions  = 'doc';
-      for (let key in query) {
-        (function(k,v){
-          conditions += ' && ' + self._createMapRCondition(k, k, v);
-        }(key,query[key]));
-      }
+    let conditions = 'doc';
+    for (let key in query) {
+      (function (k, v) {
+        conditions += ' && ' + self._createMapRCondition(k, k, v);
+      }(key, query[key]));
+    }
 
-      let fnBody = `
+    let fnBody = `
       if (${conditions}) {
           emit(null, ${fields});
       }`;
 
-      /*jshint evil: true */
-      const fn = new Function('doc', fnBody);
+    /*jshint evil: true */
+    const fn = new Function('doc', fnBody);
 
-      const FntoString = fn.toString().replace(fn.name,'');
-      fn.toString = () => {
-          return FntoString.replace(/\r?\n|\/\*\*\/|  /gim,'');
-      };
+    const FntoString = fn.toString().replace(fn.name, '');
+    fn.toString = () => {
+      return FntoString.replace(/\r?\n|\/\*\*\/|  /gim, '');
+    };
 
-      return fn;
+    return fn;
   }
 
   find(params) {
@@ -136,112 +137,122 @@ class Service {
     const paginate = (params && typeof params.paginate !== 'undefined') ? params.paginate : this.paginate;
 
     const q = params.query.q;
-    let { filters, query } = filter(params.query|| {}, paginate);
+    let {filters, query} = filter(params.query || {}, paginate);
 
     return this.db.then(db => {
-              return new Promise((resolve,reject) => {
+      return new Promise((resolve, reject) => {
 
-                const opts = {
-                  limit: filters.$limit || paginate.default || 100,
-                  skip: filters.$skip || 0,
-                  //descending: filters.$sort === 'desc'
-                };
+        const opts = {
+          limit: filters.$limit || paginate.default || 100,
+          skip: filters.$skip || 0,
+          //descending: filters.$sort === 'desc'
+        };
 
-                if (query.startkey) opts.startkey = query.startkey;
-                if (query.endkey) opts.endkey = query.endkey;
-                if (query.key) opts.key = query.key;
-                if (query.keys) opts.keys = query.keys;
-                if (query.include_docs === true) opts.include_docs = true;
+        if (query.startkey) {
+          opts.startkey = query.startkey;
+        }
+        if (query.endkey) {
+          opts.endkey = query.endkey;
+        }
+        if (query.key) {
+          opts.key = query.key;
+        }
+        if (query.keys) {
+          opts.keys = query.keys;
+        }
+        if (query.include_docs === true) {
+          opts.include_docs = true;
+        }
 
 
-                let promisify = (err, res) => {
-                  if (err) {
-                      return reject(err);
-                  }
+        let promisify = (err, res) => {
+          if (err) {
+            return reject(err);
+          }
 
-                  for (let i=0,N=res.length; i<N; i++) {
+          for (let i = 0, N = res.length; i < N; i++) {
 
-                    if(res[i]._id) res[i].id = res[i]._id;
-                    if (res[i].key) {
-                        res[i].viewData = JSON.parse(JSON.stringify(res[i]))
-                        delete res[i].key
-                        delete res[i].value
-                        delete res[i].doc
-                    }
-                    delete res[i]._id;
-                    delete res[i]._rev;
+            if (res[i]._id) res[i].id = res[i]._id;
+            if (res[i].key) {
+              res[i].viewData = JSON.parse(JSON.stringify(res[i]))
+              delete res[i].key
+              delete res[i].value
+              delete res[i].doc
+            }
+            delete res[i]._id;
+            delete res[i]._rev;
 
-                      const arr = filters.$select;
-                      if (arr && Array.isArray(arr) && arr.length>0) {
-                          let tmpData = {};
+            const arr = filters.$select;
+            if (arr && Array.isArray(arr) && arr.length > 0) {
+              let tmpData = {};
 
-                          for (let j=0,N=arr.length; j<N; j++) {
-                              tmpData[arr[j]] = res[i][arr[j]];
-                          }
-                          res[i] = tmpData;
-                      }
-                  }
+              for (let j = 0, N = arr.length; j < N; j++) {
+                tmpData[arr[j]] = res[i][arr[j]];
+              }
+              res[i] = tmpData;
+            }
+          }
 
-                  resolve(res);
-                };
+          resolve(res);
+        };
 
-                if (q) {
-                    return db.view(q, opts, promisify);
+        if (q) {
+          return db.view(q, opts, promisify);
+        }
+
+        const viewFn = self._createTempView(filters, query);
+        db.temporaryView({
+          map: viewFn
+        }, (err, res) => {
+          if (err) {
+            // try to create new _design view
+            // (ie. Cloudant doesn't allow temporaryView)
+            db.save('_design/feathers', {
+              views: {
+                temp: {map: viewFn}
+              }
+            }, (err, obj) => {
+              db.view('feathers/temp', opts, (err, res) => {
+                if (err) {
+                  return promisify(err, res);
                 }
 
-                const viewFn = self._createTempView(filters, query);
-                db.temporaryView({
-                    map: viewFn
-                }, (err,res)=>{
-                    if (err) {
-                        // try to create new _design view
-                        // (ie. Cloudant doesn't allow temporaryView)
-                        db.save('_design/feathers', {
-                            views: {
-                                temp: {  map: viewFn }
-                            }
-                        }, (err,obj) => {
-                            db.view('feathers/temp', opts, (err,res) => {
-                                if (err) {
-                                  return promisify(err, res);
-                                }
-
-                                db.remove('_design/feathers', obj.rev, err => promisify(err, res));
-                            });
-                        });
-                    } else {
-                        promisify(err,res);
-                    }
-                });
+                db.remove('_design/feathers', obj.rev, err => promisify(err, res));
               });
-            })
-            .catch(errorHandler);
+            });
+          } else {
+            promisify(err, res);
+          }
+        });
+      });
+    })
+      .catch(errorHandler);
   }
 
   _get(id) {
-    return  this.db.then(db => {
-              return new Promise((resolve,reject) => {
-                db.get(id, (err, res) => {
-                    if (err) {
-                        return reject(err);
-                    }
+    return this.db.then(db => {
+      return new Promise((resolve, reject) => {
+        db.get(id, (err, res) => {
+          if (err) {
+            return reject(err);
+          }
 
-                    resolve(res);
-                });
-              });
-            });
+          resolve(res);
+        });
+      });
+    });
   }
 
   get(id, params) {
-    return  this._get(id,params)
-                .then(res=>{
-                  let obj = Object.assign({id: res._id}, res);
-                  delete obj._id;
-                  delete obj._rev;
+    return this._get(id, params)
+      .then(res => {
+        let obj = Object.assign({id: res._id}, res);
+        delete obj._id;
+        delete obj._rev;
 
-                  return obj;
-                })
-                .catch(errorHandler);
+        return obj;
+      })
+      .catch(errorHandler);
   }
 
   create(data) {
@@ -249,75 +260,82 @@ class Service {
 
     // bulk insert
     if (Array.isArray(data)) {
-        let N = data.length;
-        entry = new Array(N);
+      let N = data.length;
+      entry = new Array(N);
 
-        for (let i = 0; i < N; i++) {
-            entry[i] = Object.assign({}, data[i]);
-        }
+      for (let i = 0; i < N; i++) {
+        entry[i] = Object.assign({}, data[i]);
+      }
     }
 
     // single doc insert
     else {
-        if (data._id || data.id) {
-            _id = data._id || data.id;
-            data.id = data._id = undefined;
-        }
-        entry = Object.assign({}, data);
+      if (data._id || data.id) {
+        _id = data._id || data.id;
+        data.id = data._id = undefined;
+      }
+      entry = Object.assign({}, data);
 
-        if (_id && _id.startsWith('_design/')) {
-            _id = _id.toLowerCase();
-        }
+      if (_id && _id.startsWith('_design/')) {
+        _id = _id.toLowerCase();
+      }
     }
 
-    return  this.db.then(db => {
-              return new Promise((resolve,reject) => {
-                const promisify = (err, res) => {
-                    if (err) {
-                        return reject(err);
-                    }
+    return this.db.then(db => {
+      return new Promise((resolve, reject) => {
+        const promisify = (err, res) => {
+          if (err) {
+            return reject(err);
+          }
 
-                    entry.id = res.id;
-                    resolve(entry);
-                };
+          entry.id = res.id;
+          resolve(entry);
+        };
 
-                _id ? db.save(_id, entry, promisify) : db.save(entry, promisify);
+        _id ? db.save(_id, entry, promisify) : db.save(entry, promisify);
 
-              });
-            })
-            .catch(errorHandler);
+      });
+    })
+      .catch(errorHandler);
   }
 
   patch(id, data) {
-      const self = this;
+    const self = this;
 
-      return this.db.then(db => {
-        return new Promise((resolve,reject) => {
-            if (data.id) { delete data.id; }
-            if (data._id) { delete data._id; }
+    return this.db.then(db => {
+      return new Promise((resolve, reject) => {
+        if (data.id) {
+          delete data.id;
+        }
+        if (data._id) {
+          delete data._id;
+        }
 
-            let entry = Object.assign({}, data);
+        let entry = Object.assign({}, data);
 
-            db.merge(id, entry, err => {
-                if (err) {
-                    return reject(err);
-                }
+        db.merge(id, entry, err => {
+          if (err) {
+            return reject(err);
+          }
 
-                resolve(self.get(id));
-            });
+          resolve(self.get(id));
         });
-      })
+      });
+    })
       .catch(errorHandler);
   }
 
   update(id, data, params) {
-    if(!Array.isArray(data)) {
-      return Promise.reject('Not replacing multiple records. Did you mean `patch`?');
+    let values = [];
+    if (!Array.isArray(data)) {
+      values.push(data);
+    } else {
+      values = data;
     }
 
     let promises = new Array(data.length);
-    for (let i = 0, N = data.length; i < N; i++) {
-        promises[i] = this.patch(data[i]._id||data[i].id, data[i], params);
+    for (let i = 0, N = values.length; i < N; i++) {
+      promises[i] = this.patch(values[i]._id || values[i].id, values[i], params);
     }
 
     return Promise.all(promises).catch(errorHandler);
@@ -328,26 +346,26 @@ class Service {
     params = params || {};
 
     if (!params.rev && !params._rev) {
-        promise = this._get(id).then(doc => {
-            params.rev = doc.rev || doc._rev;
-            return this.db;
-        });
+      promise = this._get(id).then(doc => {
+        params.rev = doc.rev || doc._rev;
+        return this.db;
+      });
     } else {
-        promise = this.db;
+      promise = this.db;
     }
 
     return promise.then(db => {
-            return new Promise((resolve,reject) => {
-              db.remove(id, params.rev || params._rev, (err, res) => {
-                if (err) {
-                    return reject(err);
-                }
+      return new Promise((resolve, reject) => {
+        db.remove(id, params.rev || params._rev, (err, res) => {
+          if (err) {
+            return reject(err);
+          }
 
-                resolve(res);
-              });
-            });
-          })
-          .catch(errorHandler);
+          resolve(res);
+        });
+      });
+    })
+      .catch(errorHandler);
   }
 }
 

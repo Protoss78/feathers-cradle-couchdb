@@ -1,15 +1,18 @@
-import feathers from 'feathers';
-import rest from 'feathers-rest';
-import socketio from 'feathers-socketio';
-import errorHandler from 'feathers-errors/handler';
+import feathers from '@feathersjs/feathers';
+import rest from '@feathersjs/express/rest';
+import socketio from '@feathersjs/socketio';
+import errorHandler from '@feathersjs/express/errors';
+import express from '@feathersjs/express';
 import bodyParser from 'body-parser';
 import { Connection } from 'cradle';
 import service from '../lib';
 
+
 // Create a feathers instance.
-const app = feathers()
+const app = express(feathers());
+
   // Enable Socket.io
-  .configure(socketio())
+  app.configure(socketio())
   // Enable REST services
   .configure(rest())
   // Turn on JSON parser for REST services
@@ -18,7 +21,7 @@ const app = feathers()
   .use(bodyParser.urlencoded({extended: true}));
 
 export default new Promise(function(resolve) {
-    const conn = new(Connection)();
+    const conn = new(Connection)('http://127.0.0.1', 5984, {auth: { username: 'admin', password: 'admin' }});
 
     const opts = {
       connection: conn,
@@ -29,7 +32,7 @@ export default new Promise(function(resolve) {
       }
     };
 
-    app.service(opts.Model, service(opts));
+    app.use(opts.Model, service(opts));
 
     // A basic error handler, just like Express
     app.use(errorHandler());

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Connection } from 'cradle';
-import feathers from 'feathers';
+import feathers from '@feathersjs/feathers';
 import service from '../src';
 import server from './test-app';
 
@@ -10,10 +10,10 @@ describe('Feathers CouchDB Service', () => {
   let conn, db;
 
   before(() => {
-      conn = new(Connection)();
+      conn = new(Connection)('http://127.0.0.1', 5984, {auth: { username: 'admin', password: 'admin' }});
       db = service({ Model: 'tests', connection:conn });
 
-      app.service('tests', service({ Model: 'tests', connection:conn }));
+      app.use('tests', service({ Model: 'tests', connection:conn }));
   });
 
   //after( ()=> db.then( db => db.destroy()).catch(()=> this.db.destroy()) );
@@ -91,7 +91,7 @@ describe('Feathers CouchDB Service', () => {
           db.destroy((err,res) => expect(res.ok).to.equal(true));
       });
     });
-    
+
     after(done => {
       server.then(s => s.close(() => done()));
     });
